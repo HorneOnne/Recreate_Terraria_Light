@@ -164,21 +164,74 @@ namespace RecreateBlockLight2D
         public bool IsAIRBlock(Vector3Int worldPosition)
         {
             Vector3Int chunkPosition = WP2CB(worldPosition);
+            bool isAirBlock = true;
 
-            if (mapFront[chunkPosition.x + chunkPosition.y * chunkSize] == BlockType.AIR)
+            if (mapFront[chunkPosition.x + chunkPosition.y * chunkSize] != BlockType.AIR)
             {
-                return true;
+                isAirBlock = false;
             }
+            else
+            {
+                if (mapBack[chunkPosition.x + chunkPosition.y * chunkSize] != BlockType.AIR)
+                {
+                    isAirBlock = false;
+                }
+            }
+            
 
-            if (mapBack[chunkPosition.x + chunkPosition.y * chunkSize] == BlockType.AIR)
-            {
-                return true;
-            }
-            return false;
+            return isAirBlock;
         }
 
 
+        public bool HasNBSolidBlock(Vector3Int worldPosition)
+        {
+            List<Vector3Int> nb = Get4Neightbours(worldPosition);
+            bool hasNBSolidBlock = false;
+
+            for(int i = 0; i < nb.Count; i++)
+            {
+                if (IsAIRBlock(nb[i]) == false)
+                    hasNBSolidBlock = true;
+            }
+            return hasNBSolidBlock;
+        }
+
+
+
+        public BlockType GetBlockType(Vector3Int worldPosition)
+        {
+            Vector3Int chunkPosition = WP2CB(worldPosition);
+
+            if (mapFront[chunkPosition.x + chunkPosition.y * chunkSize] != BlockType.AIR)
+            {
+                return mapFront[chunkPosition.x + chunkPosition.y * chunkSize];
+            }
+            else
+            {
+                return mapBack[chunkPosition.x + chunkPosition.y * chunkSize];
+            }
+        }
+
         // ====================
+
+
+
+        // Methods for GET
+        public List<Vector3Int> GetSolidBlockNB(Vector3Int worldPosition)       // SOLID_BLOCK == !AIR_BLOCK
+        {
+            List<Vector3Int> nb = Get4Neightbours(worldPosition);
+            List<Vector3Int> solidBlocks = new List<Vector3Int>();  
+
+            for (int i = 0; i < nb.Count; i++)
+            {
+                if (IsAIRBlock(nb[i]) == false)
+                {
+                    solidBlocks.Add(nb[i]);
+                }
+            }
+            return solidBlocks;
+        }
+        // ===============
 
         public void SetBlock(Vector3Int worldPosition, TilemapType mapType, BlockType blockType)
         {
@@ -191,6 +244,22 @@ namespace RecreateBlockLight2D
         {
             SetBlockVisual(worldPosition, mapType, BlockType.AIR);
             SetBlockData(worldPosition, mapType, BlockType.AIR);
+        }
+
+        #endregion
+
+
+
+        #region UTILITIES
+        private List<Vector3Int> Get4Neightbours(Vector3Int worldPosition)
+        {
+            return new List<Vector3Int>()
+            {
+                new Vector3Int(worldPosition.x ,worldPosition.y + 1),   // UP
+                new Vector3Int(worldPosition.x ,worldPosition.y - 1),   // DOWN
+                new Vector3Int(worldPosition.x - 1 ,worldPosition.y),   // LEFT
+                new Vector3Int(worldPosition.x + 1,worldPosition.y)     // RIGHT
+            };
         }
 
         #endregion
