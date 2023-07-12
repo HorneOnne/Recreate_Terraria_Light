@@ -24,7 +24,11 @@ namespace RecreateBlockLight2D
 
         private void Awake()
         {
-            mainCam = Camera.main;
+            mainCam = Camera.main;          
+        }
+
+        private void Start()
+        {
             lightManager = LightManager.Instance;
         }
 
@@ -42,6 +46,9 @@ namespace RecreateBlockLight2D
                     if (Physics2D.Raycast(mouseBtnPos, Vector3.forward, 100, chunkLayer))
                     {
                         targetChunk.SetBlock(worldPosition, Chunk.TilemapType.BACK_MAP, Chunk.BlockType.DIRT);
+
+                        // LIGHT
+                        lightManager.AddAmbientLight(targetChunk, worldPosition);
                     }
                 }
                 else if (Input.GetMouseButton(1))
@@ -50,6 +57,9 @@ namespace RecreateBlockLight2D
                     if (Physics2D.Raycast(mouseBtnPos, Vector3.forward, 100, chunkLayer))
                     {
                         targetChunk.RemoveBlock(worldPosition, Chunk.TilemapType.BACK_MAP);
+
+                        // LIGHT
+                        lightManager.RemoveAmbientLight(targetChunk, worldPosition);
                     }
                 }
             }
@@ -61,7 +71,9 @@ namespace RecreateBlockLight2D
                     if (Physics2D.Raycast(mouseBtnPos, Vector3.forward, 100, chunkLayer))
                     {
                         targetChunk.SetBlock(worldPosition, Chunk.TilemapType.FRONT_MAP, Chunk.BlockType.DIRT);
-                        AddAmbientLight(targetChunk, worldPosition);
+
+                        // LIGHT
+                        lightManager.AddAmbientLight(targetChunk, worldPosition);
                     }
 
                 }
@@ -71,25 +83,15 @@ namespace RecreateBlockLight2D
                     if (Physics2D.Raycast(mouseBtnPos, Vector3.forward, 100, chunkLayer))
                     {
                         targetChunk.RemoveBlock(worldPosition, Chunk.TilemapType.FRONT_MAP);
+
+                        // LIGHT
+                        lightManager.RemoveAmbientLight(targetChunk, worldPosition);
                     }
                 }
             }
 
         }
 
-        private void AddAmbientLight(Chunk chunk, Vector3Int worldPosition)
-        {
-            List<Vector3Int> NB4Check = Get4Neightbours(worldPosition);
-
-            for(int i = 0; i < NB4Check.Count; i++)
-            {
-                if (chunk.IsAIRBlock(NB4Check[i]) == true)
-                {
-                    lightManager.CreateLightSource(NB4Check[i]);
-                    Debug.Log("Here");
-                }
-            }
-        }
 
 
         #region UTILITIES
@@ -99,17 +101,7 @@ namespace RecreateBlockLight2D
             return new Vector3Int(Mathf.RoundToInt(mousePosition.x), Mathf.RoundToInt(mousePosition.y), 0);
         }
 
-        public List<Vector3Int> Get4Neightbours(Vector3Int worldPosition)
-        {
-            return new List<Vector3Int>()
-            {
-                new Vector3Int(worldPosition.x ,worldPosition.y + 1),   // UP
-                new Vector3Int(worldPosition.x ,worldPosition.y - 1),   // DOWN
-                new Vector3Int(worldPosition.x - 1 ,worldPosition.y),   // LEFT
-                new Vector3Int(worldPosition.x + 1,worldPosition.y)     // RIGHT
-            };
-        }
-
+      
         #endregion
     }
 }
