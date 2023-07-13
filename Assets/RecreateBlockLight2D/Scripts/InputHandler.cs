@@ -24,7 +24,7 @@ namespace RecreateBlockLight2D
 
         private void Awake()
         {
-            mainCam = Camera.main;          
+            mainCam = Camera.main;
         }
 
         private void Start()
@@ -38,25 +38,42 @@ namespace RecreateBlockLight2D
             ghost.transform.position = worldPosition;
             isPressShift = Input.GetKey(KeyCode.LeftShift);
 
-            if (isPressShift)
+
+            if (!isPressShift)
             {
                 if (Input.GetMouseButton(0))
                 {
                     Vector2 mouseBtnPos = new Vector2(worldPosition.x, worldPosition.y);
                     if (Physics2D.Raycast(mouseBtnPos, Vector3.forward, 100, chunkLayer))
                     {
-                        targetChunk.SetBlock(worldPosition, Chunk.TilemapType.BACK_MAP, Chunk.BlockType.DIRT);
+                        if (targetChunk.GetBlockType(worldPosition, Chunk.TilemapType.FRONT_MAP) == Chunk.BlockType.AIR)
+                        {
+                            targetChunk.SetBlock(worldPosition, Chunk.TilemapType.FRONT_MAP, Chunk.BlockType.DIRT);
 
-                        // LIGHT
-                        lightManager.AddAmbientLight(targetChunk, worldPosition);
+                            // LIGHT
+                            targetChunk.SetBlockColor(worldPosition, Color.black);
+                            lightManager.AddAmbientLight(targetChunk, worldPosition);
+
+                            /* We want to darken the surroundings now that we placed a block. Simulate this by placing a light and
+                             * instead of updating it, simply remove the surrounding light using the current color. */
+                            Color currentColor = targetChunk.GetBlockBlendedColor(worldPosition);
+                            LightSource existingLight = LightManager.Instance.GetLightSource(worldPosition);
+                            if (existingLight == null)
+                                existingLight = LightManager.Instance.CreateLightSource(worldPosition, currentColor,
+                                    LightManager.Instance.ambientLightStrength);
+
+
+                            LightManager.Instance.RemoveLightSource(existingLight);
+                        }
                     }
+
                 }
                 else if (Input.GetMouseButton(1))
                 {
                     Vector2 mouseBtnPos = new Vector2(worldPosition.x, worldPosition.y);
                     if (Physics2D.Raycast(mouseBtnPos, Vector3.forward, 100, chunkLayer))
                     {
-                        targetChunk.RemoveBlock(worldPosition, Chunk.TilemapType.BACK_MAP);
+                        targetChunk.RemoveBlock(worldPosition, Chunk.TilemapType.FRONT_MAP);
 
                         // LIGHT
                         lightManager.RemoveAmbientLight(targetChunk, worldPosition);
@@ -70,19 +87,21 @@ namespace RecreateBlockLight2D
                     Vector2 mouseBtnPos = new Vector2(worldPosition.x, worldPosition.y);
                     if (Physics2D.Raycast(mouseBtnPos, Vector3.forward, 100, chunkLayer))
                     {
-                        targetChunk.SetBlock(worldPosition, Chunk.TilemapType.FRONT_MAP, Chunk.BlockType.DIRT);
+                        if (targetChunk.GetBlockType(worldPosition, Chunk.TilemapType.BACK_MAP) == Chunk.BlockType.AIR)
+                        {
+                            targetChunk.SetBlock(worldPosition, Chunk.TilemapType.BACK_MAP, Chunk.BlockType.DIRT);
 
-                        // LIGHT
-                        lightManager.AddAmbientLight(targetChunk, worldPosition);
+                            // LIGHT
+                            lightManager.AddAmbientLight(targetChunk, worldPosition);
+                        }
                     }
-
                 }
                 else if (Input.GetMouseButton(1))
                 {
                     Vector2 mouseBtnPos = new Vector2(worldPosition.x, worldPosition.y);
                     if (Physics2D.Raycast(mouseBtnPos, Vector3.forward, 100, chunkLayer))
                     {
-                        targetChunk.RemoveBlock(worldPosition, Chunk.TilemapType.FRONT_MAP);
+                        targetChunk.RemoveBlock(worldPosition, Chunk.TilemapType.BACK_MAP);
 
                         // LIGHT
                         lightManager.RemoveAmbientLight(targetChunk, worldPosition);
@@ -101,7 +120,7 @@ namespace RecreateBlockLight2D
             return new Vector3Int(Mathf.RoundToInt(mousePosition.x), Mathf.RoundToInt(mousePosition.y), 0);
         }
 
-      
+
         #endregion
     }
 }

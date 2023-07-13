@@ -11,6 +11,26 @@ namespace RecreateBlockLight2D
         private Dictionary<Vector3Int, LightSource> ambientLightSources;
 
 
+        [Header("Light Properties")]
+        public float lightPenetrationFront = 8.0f;
+        public float lightPenetrationBack = 64.0f;
+        private float lightFallOffFront;
+        private float lightFallOffBack;
+        public float backLayerShadowFactor = 0.25f;
+
+        [Header("Block Light Properties")]
+        public Color ambientLightColor = Color.white;
+        [Range(0, 1)]
+        public float ambientLightStrength = 1.0f;
+
+
+        // Temp
+        public Chunk targetChunk;
+
+
+
+
+        #region INITIALIZE
         private void Awake()
         {
             if (Instance == null)
@@ -19,19 +39,16 @@ namespace RecreateBlockLight2D
             ambientLightSources = new Dictionary<Vector3Int, LightSource>();
         }
 
-
-        #region PRIVATE_METHODS
-        private LightSource CreateLightSource(Vector3Int worldPosition)
+        private void Start()
         {
-            if (HasAmbientLightSource(worldPosition) == false)
-            {
-                LightSource lightSource = Instantiate(lightSourcePrefab, worldPosition, Quaternion.identity, this.transform);
-                ambientLightSources.Add(worldPosition, lightSource);
-                return lightSource;
-            }
-            return null;
+            lightFallOffFront = 1.0f / lightFallOffFront;
+            lightFallOffBack = 1.0f / lightFallOffBack;
         }
 
+        #endregion
+
+        #region PRIVATE_METHODS
+        
         private void RemoveLightSource(Vector3Int worldPosition)
         {
             if (HasAmbientLightSource(worldPosition))
@@ -46,18 +63,50 @@ namespace RecreateBlockLight2D
 
         #region PUBLIC_METHODS
 
+        #region - Methods for get
+        public LightSource GetLightSource(Vector3Int worldPosition)
+        {
+            if(ambientLightSources.ContainsKey(worldPosition))
+                return ambientLightSources[worldPosition];
+            return null;
+        }
+
+        #endregion
+
+        public LightSource CreateLightSource(Vector3Int worldPosition, Color color, float strength = 1.0f)
+        {
+            if (HasAmbientLightSource(worldPosition) == false)
+            {
+                LightSource lightSource = Instantiate(lightSourcePrefab, worldPosition, Quaternion.identity, this.transform);
+                ambientLightSources.Add(worldPosition, lightSource);
+
+                lightSource.Initialized(color, strength, lightPenetrationFront, lightPenetrationBack);
+                lightSource.UpdateLight();
+
+                return lightSource;
+            }
+            return null;
+        }
+
+        public void RemoveLightSource(LightSource lightSource)
+        {
+            if (lightSource == null) return;
+
+            lightSource.RemoveLight();
+            Destroy(lightSource.gameObject);
+        }
 
 
         public void AddAmbientLight(Chunk chunk, Vector3Int worldPosition)
         {
-            RemoveLightSource(worldPosition);
+            //RemoveLightSource(worldPosition);
             List<Vector3Int> NB4Check = Get4Neightbours(worldPosition);
 
             for (int i = 0; i < NB4Check.Count; i++)
             {
                 if (chunk.IsAIRBlock(NB4Check[i]) == true)
                 {
-                    CreateLightSource(NB4Check[i]);
+                    CreateLightSource(NB4Check[i], ambientLightColor);
                     //Debug.Log($"Add Ambient Light source. {NB4Check[i]} \t {chunk.GetBlockType(NB4Check[i])}");
                 }
             }

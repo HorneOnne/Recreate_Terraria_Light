@@ -7,21 +7,26 @@ namespace RecreateBlockLight2D
 {
     public class Chunk : MonoBehaviour
     {
-        
-
-
+       
         // Chunk properties
         public int chunkSize = 32;
         public Vector2Int chunkIndex;
 
         public Tilemap tilemapFront;
         public Tilemap tilemapBack;
-        public Color[] tileColorsAmbient;
+        public Color[] ambientColorMap;
         public BlockType[] mapFront, mapBack;
        
 
         [SerializeField] private List<BlockData> blocksData;
         [SerializeField] private List<LightSource> ambientLight;
+
+        [Header("References")]
+        private LightManager lightManager;
+
+        [Header("Light color properties")]
+        private Color totalBlendedColor;
+        private float backLayerShadowFactor;
 
         public enum BlockType
         {
@@ -41,43 +46,18 @@ namespace RecreateBlockLight2D
         {
             mapFront = new BlockType[chunkSize * chunkSize];
             mapBack = new BlockType[chunkSize * chunkSize];
-            tileColorsAmbient = new Color[chunkSize * chunkSize];
+            ambientColorMap = new Color[chunkSize * chunkSize];
         }
 
+        private void Start()
+        {
+            lightManager = LightManager.Instance;
+        }
 
 
         #endregion
 
-        #region UTILITIES
-        public Rect GetRect(Vector2Int chunkIndex)
-        {
-            int left = chunkIndex.x * chunkSize;
-            int bottom = chunkIndex.y * chunkSize;
-            int right = left + chunkSize - 1;
-            int top = bottom + chunkSize - 1;
-
-            return new Rect(left, bottom, right - left, top - bottom);
-        }
-
-        public Vector3Int WP2CB(Vector3Int worldPosition)
-        {
-            int localChunkPosX = worldPosition.x % chunkSize;
-            int localChunkPosY = worldPosition.y % chunkSize;
-
-            if (localChunkPosX < 0)
-                localChunkPosX += chunkSize;
-            if (localChunkPosY < 0)
-                localChunkPosY += chunkSize;
-
-            return new Vector3Int(localChunkPosX, localChunkPosY, 0);
-        }
-
-        public Vector3Int GetWorldPosition(Vector3 position)
-        {
-            return new Vector3Int(Mathf.RoundToInt(position.x), Mathf.RoundToInt(position.y), 0);
-        }
-        #endregion
-
+     
         #region PRIVATE METHODS
         private BlockType[] GetMap(TilemapType tilemapType)
         {
@@ -160,7 +140,7 @@ namespace RecreateBlockLight2D
 
         #region PUBLIC METHODS
 
-        // Methods for checking
+        #region  - Methods for checking
         public bool IsAIRBlock(Vector3Int worldPosition)
         {
             Vector3Int chunkPosition = WP2CB(worldPosition);
@@ -198,25 +178,11 @@ namespace RecreateBlockLight2D
 
 
 
-        public BlockType GetBlockType(Vector3Int worldPosition)
-        {
-            Vector3Int chunkPosition = WP2CB(worldPosition);
-
-            if (mapFront[chunkPosition.x + chunkPosition.y * chunkSize] != BlockType.AIR)
-            {
-                return mapFront[chunkPosition.x + chunkPosition.y * chunkSize];
-            }
-            else
-            {
-                return mapBack[chunkPosition.x + chunkPosition.y * chunkSize];
-            }
-        }
-
-        // ====================
+      
+        #endregion
 
 
-
-        // Methods for GET
+        #region - Methods for GET
         public List<Vector3Int> GetSolidBlockNB(Vector3Int worldPosition)       // SOLID_BLOCK == !AIR_BLOCK
         {
             List<Vector3Int> nb = Get4Neightbours(worldPosition);
@@ -231,7 +197,64 @@ namespace RecreateBlockLight2D
             }
             return solidBlocks;
         }
-        // ===============
+
+
+        public Color GetBlockBlendedColor(Vector3Int worldPosition)
+        {
+            Vector3Int chunkPosition = WP2CB(worldPosition);
+            Color resultColor = Color.black;
+            float min = 0f;
+            float max = 1f;
+
+            float rChannel = ambientColorMap[chunkPosition.x + chunkPosition.y * chunkSize].r;
+            float gChannel = ambientColorMap[chunkPosition.x + chunkPosition.y * chunkSize].g;
+            float bChannel = ambientColorMap[chunkPosition.x + chunkPosition.y * chunkSize].b;
+
+            Color currentColor = ambientColorMap[chunkPosition.x + chunkPosition.y * chunkSize];
+            // Clamp color value in range [0-1]
+            /*resultColor = new Color(
+                Mathf.Clamp(rChannel, min, max),
+                Mathf.Clamp(gChannel, min, max),
+                Mathf.Clamp(bChannel, min, max));*/
+            resultColor = new Color(
+            resultColor.r > currentColor.r ? resultColor.r : currentColor.r,
+            resultColor.g > currentColor.g ? resultColor.g : currentColor.g,
+            resultColor.b > currentColor.b ? resultColor.b : currentColor.b);
+
+            return resultColor;
+        }
+
+        public BlockType GetBlockType(Vector3Int worldPosition, TilemapType mapType)
+        {
+            Vector3Int chunkPosition = WP2CB(worldPosition);
+            BlockType[] targetMap = GetMap(mapType);
+            if (targetMap == null) 
+                return BlockType.AIR;
+
+            return targetMap[chunkPosition.x + chunkPosition.y * chunkSize];
+        }
+        #endregion
+
+        #region - Methods for LIGHTING
+        public void SetBlockColor(Vector3Int worldPosition, Color color)
+        {
+            Vector3Int chunkPosition = WP2CB(worldPosition);
+
+            ambientColorMap[chunkPosition.x + chunkPosition.y * chunkSize] = color;
+
+
+            // Visuals
+            totalBlendedColor = GetBlockBlendedColor(worldPosition);
+            backLayerShadowFactor = lightManager.backLayerShadowFactor;
+            tilemapFront.SetColor(chunkPosition, totalBlendedColor);
+            tilemapBack.SetColor(chunkPosition, new Color(
+                totalBlendedColor.r * backLayerShadowFactor,
+                totalBlendedColor.g * backLayerShadowFactor,
+                totalBlendedColor.b * backLayerShadowFactor));
+        }
+
+        #endregion
+
 
         public void SetBlock(Vector3Int worldPosition, TilemapType mapType, BlockType blockType)
         {
@@ -239,12 +262,16 @@ namespace RecreateBlockLight2D
             SetBlockData(worldPosition, mapType, blockType);
         }
 
+ 
 
         public void RemoveBlock(Vector3Int worldPosition, TilemapType mapType)
         {
             SetBlockVisual(worldPosition, mapType, BlockType.AIR);
             SetBlockData(worldPosition, mapType, BlockType.AIR);
         }
+
+
+        
 
         #endregion
 
@@ -262,8 +289,34 @@ namespace RecreateBlockLight2D
             };
         }
 
-        #endregion
+        public Rect GetRect(Vector2Int chunkIndex)
+        {
+            int left = chunkIndex.x * chunkSize;
+            int bottom = chunkIndex.y * chunkSize;
+            int right = left + chunkSize - 1;
+            int top = bottom + chunkSize - 1;
 
+            return new Rect(left, bottom, right - left, top - bottom);
+        }
+
+        public Vector3Int WP2CB(Vector3Int worldPosition)
+        {
+            int localChunkPosX = worldPosition.x % chunkSize;
+            int localChunkPosY = worldPosition.y % chunkSize;
+
+            if (localChunkPosX < 0)
+                localChunkPosX += chunkSize;
+            if (localChunkPosY < 0)
+                localChunkPosY += chunkSize;
+
+            return new Vector3Int(localChunkPosX, localChunkPosY, 0);
+        }
+
+        public Vector3Int GetWorldPosition(Vector3 position)
+        {
+            return new Vector3Int(Mathf.RoundToInt(position.x), Mathf.RoundToInt(position.y), 0);
+        }
+        #endregion
     }
 }
 
