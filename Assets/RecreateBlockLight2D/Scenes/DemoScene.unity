@@ -803,6 +803,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   lightSourcePrefab: {fileID: 2285065424514995298, guid: a50509d53002b71478f96ad8c18ef1e5, type: 3}
+  lightPenetrationFront: 8
+  lightPenetrationBack: 64
+  backLayerShadowFactor: 0.25
+  ambientLightColor: {r: 1, g: 1, b: 1, a: 1}
+  ambientLightStrength: 1
+  targetChunk: {fileID: 1766736748}
 --- !u!4 &956907634
 Transform:
   m_ObjectHideFlags: 0
@@ -1087,7 +1093,7 @@ MonoBehaviour:
   chunkIndex: {x: -1, y: 0}
   tilemapFront: {fileID: 1441405601}
   tilemapBack: {fileID: 1991009651}
-  tileColorsAmbient: []
+  ambientColorMap: []
   mapFront: 
   mapBack: 
   blocksData:
