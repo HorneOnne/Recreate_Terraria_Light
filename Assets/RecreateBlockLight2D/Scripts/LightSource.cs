@@ -27,7 +27,6 @@ namespace RecreateBlockLight2D
 
     public class LightSource : MonoBehaviour
     {
-        public float lightStrength;
         public float lightPenetrationFront;
         public float lightPenetrationBack;
         private float lightFallOffFront;
@@ -77,10 +76,63 @@ namespace RecreateBlockLight2D
             queueRemoveInvalidPositions.Clear();
         }
 
+        
+        #endregion
+
+
+        #region PUBLIC_METHODS
+        public void Initialized(Color color, float penetrationFront, float penetrationBack)
+        {
+            lightColor = color;
+            lightPenetrationFront = penetrationFront;
+            lightPenetrationBack = penetrationBack;
+
+            lightFallOffFront = 1.0f / lightPenetrationFront;
+            lightFallOffBack = 1.0f / lightPenetrationBack;
+            lightPassThreshold = lightFallOffBack * 0.999999f;
+        }
+
+        public void UpdateLight()
+        {
+            state = LightSourceState.UPDATE;
+
+            ClearCachedData();
+
+
+            //Create a struct as lightweight storage per visited block
+            LightNode lightNode = new LightNode()
+            {
+                worldPosition = this.worldPosition,
+                color = this.lightColor,
+                chunk = LightManager.Instance.targetChunk,
+            };
+            if (lightNode.chunk == null) return;
+
+            //LightNode lightNode = new LightNode(worldPosition, lightColor * lightStrength, LightManager.Instance.targetChunk);
+            //if (lightNode.chunk == null) return;
+
+            // Get the current color of the block.
+            Color currentBlockColor = lightNode.chunk.GetBlockBlendedColor(worldPosition);
+            // Calculate the new color of the block using the Lerp() method.
+            Color resultColor = Color.Lerp(currentBlockColor, lightColor, 1.0f);
+
+            Debug.Log($"{currentBlockColor}\t{lightColor}\t{resultColor}");
+
+            // Set the color of the block to the new color that was calculated.
+            lightNode.chunk.SetBlockColor(worldPosition, resultColor);
+
+            
+            // Spread light
+            //queueLightPasses.Enqueue(lightNode);
+            //PerformLightPasses(queueLightPasses);
+
+            state = LightSourceState.IDLE;
+         
+        }
+
         private void PerformLightPasses(Queue<LightNode> queue, bool redChannel = true,
         bool greenChannel = true, bool blueChannel = true)
         {
-            Debug.Log("PerformLightPasses");
             if (!redChannel && !greenChannel && !blueChannel)
                 return;
 
@@ -141,7 +193,7 @@ namespace RecreateBlockLight2D
             ExtendQueueLightPass(queue, light, passLightValue, Vector3Int.left, mode);
             ExtendQueueLightPass(queue, light, passLightValue, Vector3Int.down, mode);
             ExtendQueueLightPass(queue, light, passLightValue, Vector3Int.right, mode);
-            ExtendQueueLightPass(queue, light, passLightValue, Vector3Int.up, mode);
+            ExtendQueueLightPass(queue, light, passLightValue, Vector3Int.up, mode);                    
         }
 
         private void ExtendQueueLightPass(Queue<LightNode> queue, LightNode lightNode, float lightValue,
@@ -153,14 +205,14 @@ namespace RecreateBlockLight2D
             /* Get the right chunk for this position.
              * We don't want to use GetChunk on every check, just the ones where we enter a new chunk. */
             var targetChunk = lightNode.chunk;
-  
+
 
             // Calculate the light falloff for the position in the given direction
             Chunk.BlockType blockBack = targetChunk.GetBlockType(lightPositionDirection, Chunk.TilemapType.BACK_MAP);
             Chunk.BlockType blockFont = targetChunk.GetBlockType(lightPositionDirection, Chunk.TilemapType.FRONT_MAP);
 
             float blockFalloff;
-            
+
             if (blockFont != Chunk.BlockType.AIR)
                 blockFalloff = lightFallOffFront;
             else if (blockBack != Chunk.BlockType.AIR)
@@ -192,62 +244,12 @@ namespace RecreateBlockLight2D
                 newLightNode.worldPosition = lightPositionDirection;
                 newLightNode.color = newColor;
                 newLightNode.chunk = targetChunk;
-           
+
                 targetChunk.SetBlockColor(lightPositionDirection, newColor);
                 //Debug.Log($"{newColor}\t{direction}\t{queue.Count}");
 
                 queue.Enqueue(newLightNode);
             }
-        }
-        #endregion
-
-
-        #region PUBLIC_METHODS
-        public void Initialized(Color color, float strength, float penetrationFront, float penetrationBack)
-        {
-            lightColor = color;
-            lightStrength = strength;
-            lightPenetrationFront = penetrationFront;
-            lightPenetrationBack = penetrationBack;
-
-            lightFallOffFront = 1.0f / lightPenetrationFront;
-            lightFallOffBack = 1.0f / lightPenetrationBack;
-            lightPassThreshold = lightFallOffBack * 0.999999f;
-        }
-
-        public void UpdateLight()
-        {
-            state = LightSourceState.UPDATE;
-
-            ClearCachedData();
-
-
-            //Create a struct as lightweight storage per visited block
-            LightNode lightNode = new LightNode()
-            {
-                worldPosition = this.worldPosition,
-                color = this.lightColor * lightStrength,
-                chunk = LightManager.Instance.targetChunk,
-            };
-            if (lightNode.chunk == null) return;
-
-            //LightNode lightNode = new LightNode(worldPosition, lightColor * lightStrength, LightManager.Instance.targetChunk);
-            //if (lightNode.chunk == null) return;
-
-
-            // Set the color of the light source's own tile.
-            Color currentColor = lightNode.chunk.GetBlockBlendedColor(worldPosition);
-            Color resultColor = new Color(
-                Mathf.Max(currentColor.r, lightColor.r * lightStrength),
-                Mathf.Max(currentColor.g, lightColor.g * lightStrength),
-                Mathf.Max(currentColor.b, lightColor.b * lightStrength));
-            lightNode.chunk.SetBlockColor(worldPosition, resultColor);
-
-            // Spread light
-            queueLightPasses.Enqueue(lightNode);
-            PerformLightPasses(queueLightPasses);
-
-            state = LightSourceState.IDLE;
         }
 
 
@@ -268,12 +270,10 @@ namespace RecreateBlockLight2D
             /* If there are many LightSources close together, the color of the LightSource is drowned out.
              * To correctly remove this enough, instead of using the light's color to remove, use the color 
              * of the LightSource's tile if that color is greater. */
-            Color currentColor = lightNode.chunk.GetBlockBlendedColor(worldPosition);
-            lightNode.color = new Color(
-                Mathf.Max(currentColor.r, lightColor.r * lightStrength),
-                Mathf.Max(currentColor.g, lightColor.g * lightStrength),
-                Mathf.Max(currentColor.b, lightColor.b * lightStrength));
+            Color currentBlockColor = lightNode.chunk.GetBlockBlendedColor(worldPosition);
+            lightNode.color = Color.Lerp(currentBlockColor, lightColor, 1.0f);
             lightNode.chunk.SetBlockColor(worldPosition, Color.black);
+            
 
             // Remove the actual light
             queueLightRemovalPasses.Enqueue(lightNode);
@@ -431,7 +431,14 @@ namespace RecreateBlockLight2D
         #endregion
 
 
+        #region UTILITIES
 
+        private IEnumerator WaitAfter(float time, System.Action callback)
+        {
+            yield return new WaitForSeconds(time);
+            callback?.Invoke();
+        }
+        #endregion
 
 
     }

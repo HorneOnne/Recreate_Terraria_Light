@@ -20,8 +20,6 @@ namespace RecreateBlockLight2D
 
         [Header("Block Light Properties")]
         public Color ambientLightColor = Color.white;
-        [Range(0, 1)]
-        public float ambientLightStrength = 1.0f;
 
 
         // Temp
@@ -73,14 +71,14 @@ namespace RecreateBlockLight2D
 
         #endregion
 
-        public LightSource CreateLightSource(Vector3Int worldPosition, Color color, float strength = 1.0f)
+        public LightSource CreateLightSource(Vector3Int worldPosition, Color color)
         {
             if (HasAmbientLightSource(worldPosition) == false)
             {
                 LightSource lightSource = Instantiate(lightSourcePrefab, worldPosition, Quaternion.identity, this.transform);
                 ambientLightSources.Add(worldPosition, lightSource);
 
-                lightSource.Initialized(color, strength, lightPenetrationFront, lightPenetrationBack);
+                lightSource.Initialized(color, lightPenetrationFront, lightPenetrationBack);
                 lightSource.UpdateLight();
 
                 return lightSource;
