@@ -59,8 +59,7 @@ namespace RecreateBlockLight2D
                             Color currentColor = targetChunk.GetBlockBlendedColor(worldPosition);
                             LightSource existingLight = LightManager.Instance.GetLightSource(worldPosition);
                             if (existingLight == null)
-                                existingLight = LightManager.Instance.CreateLightSource(worldPosition, currentColor,
-                                    LightManager.Instance.ambientLightStrength);
+                                existingLight = LightManager.Instance.CreateLightSource(worldPosition, currentColor);
 
 
                             LightManager.Instance.RemoveLightSource(existingLight);
