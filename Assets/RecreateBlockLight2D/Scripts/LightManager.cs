@@ -32,6 +32,7 @@ namespace RecreateBlockLight2D
         [Header("Block Light Properties")]
         public Color ambientLightColor = Color.white;
 
+
         // Temp
         public Chunk targetChunk;
 
@@ -57,7 +58,7 @@ namespace RecreateBlockLight2D
         #endregion
 
         #region PRIVATE_METHODS
-        
+
         private void RemoveLightSource(Vector3Int worldPosition)
         {
             if (HasAmbientLightSource(worldPosition))
@@ -75,7 +76,7 @@ namespace RecreateBlockLight2D
         #region - Methods for get
         public LightSource GetLightSource(Vector3Int worldPosition)
         {
-            if(ambientLightSources.ContainsKey(worldPosition))
+            if (ambientLightSources.ContainsKey(worldPosition))
                 return ambientLightSources[worldPosition];
             return null;
         }
@@ -117,7 +118,6 @@ namespace RecreateBlockLight2D
                 if (chunk.IsAIRBlock(NB4Check[i]) == true)
                 {
                     CreateLightSource(NB4Check[i], ambientLightColor);
-                    //Debug.Log($"Add Ambient Light source. {NB4Check[i]} \t {chunk.GetBlockType(NB4Check[i])}");
                 }
             }
         }
@@ -142,7 +142,7 @@ namespace RecreateBlockLight2D
 
 
 
-     
+
         // Methods foor checking
         public bool HasAmbientLightSource(Vector3Int worldPosition)
         {
@@ -153,7 +153,7 @@ namespace RecreateBlockLight2D
         #endregion
 
         #region UTILITIES
-        
+
 
         private List<Vector3Int> Get4Neightbours(Vector3Int worldPosition)
         {
@@ -183,7 +183,7 @@ namespace RecreateBlockLight2D
 
 
 
-        private float passLightValue;
+        private float passLightColorChannelValue;
 
         private void ClearCachedData()
         {
@@ -195,75 +195,34 @@ namespace RecreateBlockLight2D
             queueRemoveInvalidPositions.Clear();
         }
 
-        private void PerformLightPasses(Queue<LightNode> queue, bool redChannel = true,
-        bool greenChannel = true, bool blueChannel = true)
+        private void PerformLightPasses(Queue<LightNode> queue)
         {
-            Debug.Log("PerformLightPasses");
-            if (!redChannel && !greenChannel && !blueChannel)
-                return;
 
             /* Generate a backup queue to refill the original queue after each channel
              * (since every channel execution empties the queue). */
             Queue<LightNode> queueBackup = new Queue<LightNode>(queue);
 
             // Spread light for each channel
-            if (redChannel)
-            {
-                queue = new Queue<LightNode>(queueBackup);
-                while (queue.Count > 0)
-                    ExecuteLightingPass(queue, LightingChannelMode.RED);
-            }
-            if (greenChannel)
-            {
-                queue = new Queue<LightNode>(queueBackup);
-                while (queue.Count > 0)
-                    ExecuteLightingPass(queue, LightingChannelMode.GREEN);
-            }
-            if (blueChannel)
-            {
-                queue = new Queue<LightNode>(queueBackup);
-                while (queue.Count > 0)
-                    ExecuteLightingPass(queue, LightingChannelMode.BLUE);
-            }
+            queue = new Queue<LightNode>(queueBackup);
+            while (queue.Count > 0)
+                ExecuteLightingPassThroughColorChannel(queue);
         }
-        private void ExecuteLightingPass(Queue<LightNode> queue, LightingChannelMode mode)
+        private void ExecuteLightingPassThroughColorChannel(Queue<LightNode> queue)
         {
-            //Debug.Log("ExecuteLightingPass");
             // Get the LightNode that's first in line
             LightNode light = queue.Dequeue();
 
-            /* Obtain light values from the corresponding channel to lessen overhead
-             * on extension passes. */
-            switch (mode)
-            {
-                case LightingChannelMode.RED:
-                    if (light.color.r <= 0f)
-                        return;
-                    passLightValue = light.color.r;
-                    break;
-                case LightingChannelMode.GREEN:
-                    if (light.color.g <= 0f)
-                        return;
-                    passLightValue = light.color.g;
-                    break;
-                case LightingChannelMode.BLUE:
-                    if (light.color.b <= 0f)
-                        return;
-                    passLightValue = light.color.b;
-                    break;
-                default:
-                    return;
-            }
+
 
             // Try and spread its light to surrounding blocks
-            ExtendQueueLightPass(queue, light, passLightValue, Vector3Int.left, mode);
-            ExtendQueueLightPass(queue, light, passLightValue, Vector3Int.down, mode);
-            ExtendQueueLightPass(queue, light, passLightValue, Vector3Int.right, mode);
-            ExtendQueueLightPass(queue, light, passLightValue, Vector3Int.up, mode);
+            ExtendQueueLightPassThroughChannel(queue, light, light.color.r, Vector3Int.left);
+            ExtendQueueLightPassThroughChannel(queue, light, light.color.r, Vector3Int.down);
+            ExtendQueueLightPassThroughChannel(queue, light, light.color.r, Vector3Int.right);
+            ExtendQueueLightPassThroughChannel(queue, light, light.color.r, Vector3Int.up);
         }
 
-        private void ExtendQueueLightPass(Queue<LightNode> queue, LightNode lightNode, float lightValue,
-        Vector3Int direction, LightingChannelMode mode)
+        private void ExtendQueueLightPassThroughChannel(Queue<LightNode> queue, LightNode lightNode, float lightValue,
+        Vector3Int direction)
         {
             //Debug.Log("ExtendQueueLightPass");
             var lightPositionDirection = lightNode.worldPosition + direction;
@@ -278,7 +237,6 @@ namespace RecreateBlockLight2D
             Chunk.BlockType blockFont = targetChunk.GetBlockType(lightPositionDirection, Chunk.TilemapType.FRONT_MAP);
 
             float blockFalloff;
-
             if (blockFont != Chunk.BlockType.AIR)
                 blockFalloff = lightFallOffFront;
             else if (blockBack != Chunk.BlockType.AIR)
@@ -287,42 +245,34 @@ namespace RecreateBlockLight2D
                 return;
 
             Color currentColor = targetChunk.GetBlockBlendedColor(lightPositionDirection);
-            float lightValueDirection =
-                (mode == LightingChannelMode.RED ?
-                    currentColor.r :
-                    (mode == LightingChannelMode.GREEN ?
-                        currentColor.g :
-                        currentColor.b));
+            float lightValueColorChannel = currentColor[(int)LightingChannelMode.RED];
+
 
             /* Spread light if the tile's channel color in this direction is lower in lightValue even after compensating
              * its falloff. lightPassThreshold acts as an additional performance boost and should be < light falloff back. */
-            if (lightValueDirection + blockFalloff + lightPassThreshold < lightValue)
+            if (lightValueColorChannel + blockFalloff + lightPassThreshold < lightValue)
             {
                 lightValue = Mathf.Clamp(lightValue - blockFalloff, 0f, 1f);
-                Color newColor =
-                    (mode == LightingChannelMode.RED ?
-                        new Color(lightValue, currentColor.g, currentColor.b) :
-                    (mode == LightingChannelMode.GREEN ?
-                        new Color(currentColor.r, lightValue, currentColor.b) :
-                        new Color(currentColor.r, currentColor.g, lightValue)));
+                Color newColor = currentColor;
+                newColor[(int)LightingChannelMode.RED] = lightValue;
 
-                LightNode newLightNode;
-                newLightNode.worldPosition = lightPositionDirection;
-                newLightNode.color = newColor;
-                newLightNode.chunk = targetChunk;
+                LightNode newLightNode = new LightNode()
+                {
+                    worldPosition = lightPositionDirection,
+                    color = newColor,
+                    chunk = targetChunk
+                };
+
 
                 targetChunk.SetBlockColor(lightPositionDirection, newColor);
-                //Debug.Log($"{newColor}\t{direction}\t{queue.Count}");
-
                 queue.Enqueue(newLightNode);
             }
         }
- 
+
 
         public void UpdateLight(LightSource lightSource)
         {
             ClearCachedData();
-
 
             //Create a struct as lightweight storage per visited block
             LightNode lightNode = new LightNode()
@@ -333,16 +283,33 @@ namespace RecreateBlockLight2D
             };
             if (lightNode.chunk == null) return;
 
-            //LightNode lightNode = new LightNode(worldPosition, lightColor * lightStrength, LightManager.Instance.targetChunk);
-            //if (lightNode.chunk == null) return;
-
 
             // Set the color of the light source's own tile.
             Color currentColor = lightNode.chunk.GetBlockBlendedColor(lightSource.worldPosition);
-            Color resultColor = new Color(
-                Mathf.Max(currentColor.r, lightSource.lightColor.r * lightSource.lightStrength),
-                Mathf.Max(currentColor.g, lightSource.lightColor.g * lightSource.lightStrength),
-                Mathf.Max(currentColor.b, lightSource.lightColor.b * lightSource.lightStrength));
+            Color resultColor = Utilities.GetMaxIntensity(currentColor, lightSource.lightColor * lightSource.lightStrength);
+            lightNode.chunk.SetBlockColor(lightSource.worldPosition, resultColor);
+
+            // Spread light
+            queueLightPasses.Enqueue(lightNode);
+            PerformLightPasses(queueLightPasses);
+        }
+
+        public IEnumerator PerformUpdateLightSmooth(LightSource lightSource)
+        {
+            ClearCachedData();
+
+            //Create a struct as lightweight storage per visited block
+            LightNode lightNode = new LightNode()
+            {
+                worldPosition = lightSource.worldPosition,
+                color = lightSource.lightColor * lightSource.lightStrength,
+                chunk = targetChunk,
+            };
+            if (lightNode.chunk == null) yield break;
+
+            // Set the color of the light source's own tile.
+            Color currentColor = lightNode.chunk.GetBlockBlendedColor(lightSource.worldPosition);
+            Color resultColor = Utilities.GetMaxIntensity(currentColor, lightSource.lightColor * lightSource.lightStrength);
             lightNode.chunk.SetBlockColor(lightSource.worldPosition, resultColor);
 
             // Spread light
@@ -351,15 +318,17 @@ namespace RecreateBlockLight2D
         }
 
 
-     
+
         public void RemoveLight(LightSource lightSource)
         {
             ClearCachedData();
 
             // Create a struct as lightweight data storage per block
-            LightNode lightNode;
-            lightNode.worldPosition = lightSource.worldPosition;
-            lightNode.chunk = targetChunk;
+            LightNode lightNode = new LightNode()
+            {
+                worldPosition = lightSource.worldPosition,
+                chunk = targetChunk,
+            };
             if (lightNode.chunk == null)
                 return;
 
@@ -367,10 +336,7 @@ namespace RecreateBlockLight2D
              * To correctly remove this enough, instead of using the light's color to remove, use the color 
              * of the LightSource's tile if that color is greater. */
             Color currentColor = lightNode.chunk.GetBlockBlendedColor(lightSource.worldPosition);
-            lightNode.color = new Color(
-                Mathf.Max(currentColor.r, lightSource.lightColor.r * lightSource.lightStrength),
-                Mathf.Max(currentColor.g, lightSource.lightColor.g * lightSource.lightStrength),
-                Mathf.Max(currentColor.b, lightSource.lightColor.b * lightSource.lightStrength));
+            lightNode.color = Utilities.GetMaxIntensity(currentColor, lightSource.lightColor * lightSource.lightStrength);
             lightNode.chunk.SetBlockColor(lightSource.worldPosition, Color.black);
 
             // Remove the actual light
@@ -391,30 +357,14 @@ namespace RecreateBlockLight2D
             /* Generate a backup queue to refill the original queue after each channel
              * (since every channel execution empties the queue).*/
             Queue<LightNode> queueBackup = new Queue<LightNode>(queue);
-
             // Remove all light from the given channel
             while (queue.Count > 0)
-                ExecuteLightingRemovalPass(queue, LightingChannelMode.RED);
+            {
+                ExecuteLightingRemovalPass(queue);
+            }
             // Spread stronger surrounding channel light that should fill this void. For example from another light source nearby
             RemoveInvalidSpreadPositions();
-            PerformLightPasses(queueLightPasses, redChannel: true, greenChannel: false, blueChannel: false);
-
-            // Repeat for other channels
-            removalPositions.Clear();
-            queueLightPasses.Clear();
-            queue = new Queue<LightNode>(queueBackup);
-            while (queue.Count > 0)
-                ExecuteLightingRemovalPass(queue, LightingChannelMode.GREEN);
-            RemoveInvalidSpreadPositions();
-            PerformLightPasses(queueLightPasses, redChannel: false, greenChannel: true, blueChannel: false);
-
-            removalPositions.Clear();
-            queueLightPasses.Clear();
-            queue = new Queue<LightNode>(queueBackup);
-            while (queue.Count > 0)
-                ExecuteLightingRemovalPass(queue, LightingChannelMode.BLUE);
-            RemoveInvalidSpreadPositions();
-            PerformLightPasses(queueLightPasses, redChannel: false, greenChannel: false, blueChannel: true);
+            PerformLightPasses(queueLightPasses);
         }
 
         private void RemoveInvalidSpreadPositions()
@@ -425,11 +375,11 @@ namespace RecreateBlockLight2D
                 if (!removalPositions.Contains(lightNode.worldPosition))
                     queueLightPasses.Enqueue(lightNode);
         }
-     
 
 
-     
-        private void ExecuteLightingRemovalPass(Queue<LightNode> queue, LightingChannelMode mode)
+
+
+        private void ExecuteLightingRemovalPass(Queue<LightNode> queue)
         {
             // Get the LightNode that's first in line
             LightNode light = queue.Dequeue();
@@ -437,73 +387,41 @@ namespace RecreateBlockLight2D
             /* Detect passing over LightSources, while removing, to update them later. When we touch
              * such a LightSource, it means we completely drowned out its color and we need to
              * update the light again to fill in the blanks correctly. */
-            LightSource lightSource = LightManager.Instance.GetLightSource(light.worldPosition);
-            if (lightSource != null && !removalLights.Contains(lightSource))
+            LightSource lightSource = GetLightSource(light.worldPosition);
+            if (lightSource != null && removalLights.Contains(lightSource) == false)
                 removalLights.Add(lightSource);
 
             // Track removed positions
             removalPositions.Add(light.worldPosition);
 
-            /* Obtain light values from the corresponding channel to lessen overhead
-             * on extension passes. */
-            switch (mode)
-            {
-                case LightingChannelMode.RED:
-                    if (light.color.r <= 0f)
-                        return;
-                    passLightValue = light.color.r;
-                    break;
-                case LightingChannelMode.GREEN:
-                    if (light.color.g <= 0f)
-                        return;
-                    passLightValue = light.color.g;
-                    break;
-                case LightingChannelMode.BLUE:
-                    if (light.color.b <= 0f)
-                        return;
-                    passLightValue = light.color.b;
-                    break;
-                default:
-                    return;
-            }
 
             // Try and spread the light removal
-            ExtendQueueLightRemovalPass(queue, light, passLightValue, Vector3Int.left, mode);
-            ExtendQueueLightRemovalPass(queue, light, passLightValue, Vector3Int.down, mode);
-            ExtendQueueLightRemovalPass(queue, light, passLightValue, Vector3Int.right, mode);
-            ExtendQueueLightRemovalPass(queue, light, passLightValue, Vector3Int.up, mode);
+            ExtendQueueLightRemovalPass(queue, light, light.color.r, Vector3Int.left);
+            ExtendQueueLightRemovalPass(queue, light, light.color.r, Vector3Int.down);
+            ExtendQueueLightRemovalPass(queue, light, light.color.r, Vector3Int.right);
+            ExtendQueueLightRemovalPass(queue, light, light.color.r, Vector3Int.up);
         }
 
         private void ExtendQueueLightRemovalPass(Queue<LightNode> queue, LightNode light, float lightValue,
-        Vector3Int direction, LightingChannelMode mode)
+        Vector3Int direction)
         {
-            Color currentColor = LightManager.Instance.targetChunk.GetBlockBlendedColor(light.worldPosition + direction);
-            float lightValueDirection =
-                (mode == LightingChannelMode.RED ?
-                    currentColor.r :
-                    (mode == LightingChannelMode.GREEN ?
-                        currentColor.g :
-                        currentColor.b));
+            Color currentColor = targetChunk.GetBlockBlendedColor(light.worldPosition + direction);
+            float lightValueDirection = currentColor[(int)LightingChannelMode.RED];
 
             if (lightValueDirection > 0f)
             {
                 // Continue removing and extending while the block I'm looking at has a lower lightValue for this channel
                 if (lightValueDirection < lightValue)
                 {
-                    Color newColor =
-                        (mode == LightingChannelMode.RED ?
-                            new Color(0f, currentColor.g, currentColor.b) :
-                            (mode == LightingChannelMode.GREEN ?
-                                new Color(currentColor.r, 0f, currentColor.b) :
-                                new Color(currentColor.r, currentColor.g, 0f)));
+                    Color newColor = new Color(0f, currentColor.g, currentColor.b);
 
-                    LightNode lightRemovalNode;
-                    lightRemovalNode.worldPosition = light.worldPosition + direction;
-                    lightRemovalNode.color = currentColor;
-                    lightRemovalNode.chunk = LightManager.Instance.targetChunk;
-
-                    LightManager.Instance.targetChunk.SetBlockColor(light.worldPosition + direction, newColor);
-
+                    LightNode lightRemovalNode = new LightNode()
+                    {
+                        worldPosition = light.worldPosition + direction,
+                        color = currentColor,
+                        chunk = targetChunk
+                    };
+                    targetChunk.SetBlockColor(light.worldPosition + direction, newColor);
                     queue.Enqueue(lightRemovalNode);
                 }
                 /* I just found a tile with a higher lightValue for this channel which means another strong light source
@@ -514,10 +432,13 @@ namespace RecreateBlockLight2D
                  * light. These are later filtered out before spreading the light (using removalPositions). */
                 else
                 {
-                    LightNode lightNode;
-                    lightNode.worldPosition = light.worldPosition + direction;
-                    lightNode.color = currentColor;
-                    lightNode.chunk = LightManager.Instance.targetChunk;
+                    LightNode lightNode = new LightNode()
+                    {
+                        worldPosition = light.worldPosition + direction,
+                        color = currentColor,
+                        chunk = targetChunk,
+                    };
+
                     queueLightPasses.Enqueue(lightNode);
                 }
             }

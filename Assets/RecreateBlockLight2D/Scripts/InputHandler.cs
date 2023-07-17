@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections;
 using UnityEngine;
-using UnityEngine.TestTools;
 
 namespace RecreateBlockLight2D
 {
@@ -54,15 +54,19 @@ namespace RecreateBlockLight2D
                             targetChunk.SetBlockColor(worldPosition, Color.black);
                             lightManager.AddAmbientLight(targetChunk, worldPosition);
 
+
                             /* We want to darken the surroundings now that we placed a block. Simulate this by placing a light and
                              * instead of updating it, simply remove the surrounding light using the current color. */
                             Color currentColor = targetChunk.GetBlockBlendedColor(worldPosition);
-                            LightSource existingLight = LightManager.Instance.GetLightSource(worldPosition);
+                            LightSource existingLight = lightManager.GetLightSource(worldPosition);
                             if (existingLight == null)
-                                existingLight = LightManager.Instance.CreateLightSource(worldPosition, currentColor);
+                            {
+                                existingLight = lightManager.CreateLightSource(worldPosition, currentColor,
+                                    lightManager.ambientLightStrength);
+                            }
+                            lightManager.RemoveLightSource(existingLight);
 
 
-                            LightManager.Instance.RemoveLightSource(existingLight);
                         }
                     }
 
@@ -119,6 +123,11 @@ namespace RecreateBlockLight2D
             return new Vector3Int(Mathf.RoundToInt(mousePosition.x), Mathf.RoundToInt(mousePosition.y), 0);
         }
 
+        private IEnumerator WaitAfter(float time, Action callback)
+        {
+            yield return new WaitForSeconds(time);
+            callback?.Invoke();
+        }
 
         #endregion
     }
