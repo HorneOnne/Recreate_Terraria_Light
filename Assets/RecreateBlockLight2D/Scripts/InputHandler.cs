@@ -62,11 +62,9 @@ namespace RecreateBlockLight2D
                             if (existingLight == null)
                             {
                                 existingLight = lightManager.CreateLightSource(worldPosition, currentColor,
-                                    lightManager.ambientLightStrength);
+                                    lightManager.ambientLightStrength);                             
                             }
                             lightManager.RemoveLightSource(existingLight);
-
-
                         }
                     }
 

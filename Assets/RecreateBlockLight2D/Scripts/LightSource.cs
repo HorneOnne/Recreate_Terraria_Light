@@ -16,6 +16,13 @@ namespace RecreateBlockLight2D
             this.color = color;
             this.chunk = chunk;
         }
+
+        public LightNode(LightSource lightSource, Chunk chunk)
+        {
+            this.worldPosition = lightSource.worldPosition;
+            this.color = lightSource.lightColor;
+            this.chunk = chunk;
+        }
     }
 
     public class LightSource : MonoBehaviour
