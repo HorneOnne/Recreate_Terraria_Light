@@ -66,6 +66,7 @@ namespace RecreateBlockLight2D
                             }
                             lightManager.RemoveLightSource(existingLight);
 
+
                         }
                     }
 

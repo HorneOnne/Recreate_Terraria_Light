@@ -33,7 +33,6 @@ namespace RecreateBlockLight2D
         public Color ambientLightColor = Color.white;
 
 
-
         // Temp
         public Chunk targetChunk;
 
@@ -84,7 +83,7 @@ namespace RecreateBlockLight2D
 
         #endregion
 
-        public LightSource CreateLightSource(Vector3Int worldPosition, Color color, float strength = 1.0f)
+        public LightSource CreateLightSource(Vector3Int worldPosition, Color color)
         {
             if (HasAmbientLightSource(worldPosition) == false)
             {
@@ -93,6 +92,7 @@ namespace RecreateBlockLight2D
 
                 lightSource.Initialized(color, strength);
                 UpdateLight(lightSource);
+
 
                 return lightSource;
             }

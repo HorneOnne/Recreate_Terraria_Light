@@ -31,13 +31,13 @@ namespace RecreateBlockLight2D
             worldPosition = new Vector3Int(Mathf.RoundToInt(transform.position.x), Mathf.RoundToInt(transform.position.y), 0);        
         }
 
-
   
         public void Initialized(Color color, float strength)
         {
             lightColor = color;
             lightStrength = strength;        
         }   
+
     }
 }
 
