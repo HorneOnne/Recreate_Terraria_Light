@@ -803,12 +803,14 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   lightSourcePrefab: {fileID: 2285065424514995298, guid: a50509d53002b71478f96ad8c18ef1e5, type: 3}
-  lightPenetrationFront: 8
-  lightPenetrationBack: 64
+  lightPenetrationFront: 4
+  lightPenetrationBack: 16
   backLayerShadowFactor: 0.25
-  ambientLightColor: {r: 1, g: 1, b: 1, a: 1}
   ambientLightStrength: 1
+  ambientLightColor: {r: 1, g: 1, b: 1, a: 1}
   targetChunk: {fileID: 1766736748}
+  lightValueTextPrefab: {fileID: 6049076802998411806, guid: e13b77163b1900d4ba7894d58d20f9a8, type: 3}
+  lightValueTextRoot: {fileID: 970287915}
 --- !u!4 &956907634
 Transform:
   m_ObjectHideFlags: 0
@@ -823,6 +825,37 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_RootOrder: 1
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &970287914
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 970287915}
+  m_Layer: 0
+  m_Name: Debug_Text_Root
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &970287915
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 970287914}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_RootOrder: 6
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1441405598
 GameObject:
