@@ -29,10 +29,12 @@ namespace RecreateBlockLight2D
     {
         public Color lightColor;
         public Vector3Int worldPosition;
-        public float lightStrength;
 
 
+        [Header("Testing purpose")]
+        [SerializeField] private SpriteRenderer sr;
        
+
         private void Awake()
         {
             worldPosition = new Vector3Int(Mathf.RoundToInt(transform.position.x), Mathf.RoundToInt(transform.position.y), 0);        
@@ -41,9 +43,9 @@ namespace RecreateBlockLight2D
   
         public void Initialized(Color color, float strength)
         {
-            lightColor = color;
-            lightStrength = strength;        
-        }   
+            lightColor = color;       
+        }
+
 
     }
 }

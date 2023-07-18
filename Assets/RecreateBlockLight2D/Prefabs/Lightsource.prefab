@@ -98,6 +98,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: bf008105f4eb4ea4698b519fabd78877, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  lightColor: {r: 0, g: 0, b: 0, a: 0}
+  worldPosition: {x: 0, y: 0, z: 0}
+  lightStrength: 0
+  sr: {fileID: 2285065424514995297}
 --- !u!61 &8706423049206755686
 BoxCollider2D:
   m_ObjectHideFlags: 0
